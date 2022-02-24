@@ -1,0 +1,41 @@
+name: deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-18.04
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup Node
+        uses: actions/setup-node@v2-beta
+        with:
+          node-version: "12"
+
+      - name: Cache dependencies
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - run: npm install -g yarn
+      - run: yarn
+      - run: yarn format
+      - run: PATH_PREFIX=${{github.event.repository.name}}/__admin OUTPUT_DIR=__admin BRIDGE_MODE=edit yarn build
+      - run: PATH_PREFIX=${{github.event.repository.name}} yarn build
+      - run: mv __admin public/
+
+      - name: Deploy
+        uses: JamesIves/github-pages-deploy-action@4.1.0
+        with:
+          folder: ./public
+          branch: gh-pages
+          clean: true
+          clean-exclude: |
+            .nojekyll
